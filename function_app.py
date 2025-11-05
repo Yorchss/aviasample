@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 import os
 import json
+from azure.functions import HttpRequest, HttpResponse
 from azure.cosmos import CosmosClient, exceptions
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -16,8 +17,8 @@ client = CosmosClient(endpoint, key)
 database = client.get_database_client(database_id)
 container = database.get_container_client(container_id)
 
-@app.route(route="aviatrigger", methods=["GET", "POST", "PUT", "DELETE"])
-def aviasample(req: func.HttpRequest) -> func.HttpResponse:
+@app.route(route="aviatest", methods=["GET", "POST", "PUT", "DELETE"])
+def aviatest(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Processing {req.method} request.")
 
     try:
