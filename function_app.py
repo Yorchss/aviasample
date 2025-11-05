@@ -1,7 +1,5 @@
 import azure.functions as func
 import logging
-import azure.functions as func
-import logging
 import os
 import json
 from azure.cosmos import CosmosClient, exceptions
