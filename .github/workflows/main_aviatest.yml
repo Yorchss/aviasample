@@ -85,7 +85,7 @@ jobs:
         with:
           app-name: 'aviatest'
           slot-name: 'Production'
-          package: './CosmoDB'
+          package: '.'
 
 
           
