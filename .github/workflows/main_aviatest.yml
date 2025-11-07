@@ -75,6 +75,9 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3255DEA2438E44858DABAE381B125CE6 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0BD53B1062A9427585C9715775A31F88 }}
 
+      - name: List repo contents
+        run: ls -l
+
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
