@@ -12,7 +12,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  PYTHON_VERSION: '3.10' # set this to the python version to use (supports 3.6, 3.7, 3.8)
+  PYTHON_VERSION: '3.13' # set this to the python version to use (supports 3.6, 3.7, 3.8)
 
 jobs:
   build:
@@ -40,8 +40,7 @@ jobs:
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: |
-          zip -r release.zip function_app.py host.json requirements.txt
+        run: zip release.zip ./* -r
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -72,12 +71,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3B73F4FDB770441D9C3742055DF5FD79 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3255DEA2438E44858DABAE381B125CE6 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0BD53B1062A9427585C9715775A31F88 }}
-
-      - name: List repo contents
-        run: ls -l
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_9D04A8793A6242978659614936719476 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BB8B91A6655746F6887DFCF9D0227344 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_64E4F10593654EAC8D36094137ED3B9E }}
 
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
@@ -85,7 +81,5 @@ jobs:
         with:
           app-name: 'aviatest'
           slot-name: 'Production'
-          package: '.'
-
-
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           
