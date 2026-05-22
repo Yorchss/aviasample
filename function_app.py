@@ -2,8 +2,15 @@ import azure.functions as func
 import logging
 import os
 import json
+import azure.functions as func
+import logging
+import requests
+from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
 from azure.functions import HttpRequest, HttpResponse
 from azure.cosmos import CosmosClient, exceptions
+
+
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -84,3 +91,94 @@ def aviatest(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error: {e}")
         return func.HttpResponse(f"Internal server error: {str(e)}", status_code=500)
+
+
+@app.function_name(name="ChatbotProxy")
+@app.route(route="ChatbotProxy", methods=["POST"])
+def chatbot_proxy(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        project = AIProjectClient(
+            credential=DefaultAzureCredential(),
+            endpoint="https://admin-1216-resource.services.ai.azure.com/api/projects/admin-1216"
+        )
+
+        agent = project.agents.get_agent("asst_SM8T7LKDvABBeND45Y1xh5iS")
+
+        # ✅ Leer request
+        data = req.get_json()
+        logging.info(f"Request JSON: {data}")
+
+        # ✅ NUEVO: manejar thread_id
+        thread_id = data.get("thread_id")
+
+        if not thread_id:
+            # 🔵 Crear nuevo thread si no existe
+            thread = project.agents.threads.create()
+            thread_id = thread.id
+            logging.info(f"Nuevo thread creado: {thread_id}")
+        else:
+            # 🟢 Reusar thread existente
+            thread = project.agents.threads.get(thread_id)
+            logging.info(f"Reusando thread: {thread_id}")
+
+        # ✅ Crear mensaje del usuario
+        project.agents.messages.create(
+            thread_id=thread_id,
+            role="user",
+            content=data.get("message", "")
+        )
+
+        # ✅ Ejecutar agente
+        run = project.agents.runs.create_and_process(
+            thread_id=thread_id,
+            agent_id=agent.id
+        )
+
+        if run.status == "failed":
+            logging.error(f"Run failed: {run.last_error}")
+            return func.HttpResponse(f"Run failed: {run.last_error}", status_code=500)
+
+        # ✅ Obtener respuesta
+        messages = project.agents.messages.list(thread_id=thread_id, order="asc")
+        last_message = None
+
+        for m in messages:
+            if m.text_messages:
+                last_message = m.text_messages[-1].text.value
+
+        if not last_message:
+            logging.warning("No hubo respuesta del agente")
+            response = func.HttpResponse("No hubo respuesta del agente", status_code=200)
+            response.headers["thread-id"] = thread_id
+            return response
+
+        # ✅ IMPORTANTE: devolver thread_id al frontend
+        response = func.HttpResponse(last_message, status_code=200)
+        response.headers["thread-id"] = thread_id
+
+        return response
+
+    except Exception as e:
+        logging.error(f"Error en ChatbotProxy: {e}")
+        return func.HttpResponse(str(e), status_code=500)
+
+@app.function_name(name="ChatFrontendProxy")
+@app.route(route="ChatFrontendProxy", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def chat_frontend_proxy(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        # Leer el mensaje del frontend
+        data = req.get_json()
+
+        # Recuperar el code desde variables de entorno
+        code = os.environ["CHATBOT_CODE"]
+        url = f"https://mchief.azurewebsites.net/api/ChatbotProxy?code={code}"
+
+        # Reenviar la petición al chatbot original
+        r = requests.post(url, json=data)
+
+        # Devolver la respuesta tal cual al frontend
+        return func.HttpResponse(r.text, status_code=r.status_code)
+
+    except Exception as e:
+        logging.error(f"Error en ChatFrontendProxy: {e}")
+        return func.HttpResponse(str(e), status_code=500)
