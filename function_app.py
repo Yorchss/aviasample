@@ -176,8 +176,12 @@ def chat_frontend_proxy(req: func.HttpRequest) -> func.HttpResponse:
         # Reenviar la petición al chatbot original
         r = requests.post(url, json=data)
 
-        # Devolver la respuesta tal cual al frontend
-        return func.HttpResponse(r.text, status_code=r.status_code)
+        # Devolver la respuesta y propagar el thread-id
+        resp = func.HttpResponse(r.text, status_code=r.status_code)
+        if "thread-id" in r.headers:
+            resp.headers["thread-id"] = r.headers["thread-id"]
+
+        return resp
 
     except Exception as e:
         logging.error(f"Error en ChatFrontendProxy: {e}")
